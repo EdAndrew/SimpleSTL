@@ -1,0 +1,115 @@
+//10升, 6升, 5升,4升
+#include <iostream>
+#include <set>
+#include <limits>
+struct state;
+
+std::set<state> open, close;
+int capacity[] = { 10, 6, 5, 4 };
+
+struct state
+{
+	state(int _b10, int _b6, int _b5, int _b4)
+	:count(0), value(_b10 * 1000 + _b6 * 100 + _b5 * 10 + _b4)
+	{
+	}
+	state(const state& s) = default;
+	bool operator<(state rhs)const
+	{
+		return value < rhs.value;
+	}
+	void spread(int content[4])const
+	{
+		content[0] = value / 1000;
+
+		content[1] = value % 1000 / 100;
+		content[2] = value % 100 / 10;
+		content[3] = value % 10;
+	}
+
+	void derive()const;
+
+	short count;
+	short value;
+};
+
+
+void state::derive()const
+{
+	int c[4], t[4];
+	spread(c);
+	for (int i = 0; i < 4; ++i) // the bottle to pour from
+	{
+		if (c[i] == 0)
+			continue; // no action on empty bottle
+		for (int j = 0; j < 4; ++j) // the bottle to pour to
+		{
+			if (j == i || c[j] == capacity[j]) // don't pour to self or full bottle
+				continue;
+			//now we can derive a new state
+			//state s=*this;
+			//++s.count;
+			int balance = capacity[j] - c[j];
+			t[0] = c[0];
+			t[1] = c[1];
+			t[2] = c[2];
+			t[3] = c[3];
+			if (c[i] > balance) // source has more than target can hold
+				t[i] -= balance, t[j] = capacity[j];
+			else // target can hold everything currently in source
+				t[j] += t[i], t[i] = 0;
+			state s(t[0], t[1], t[2], t[3]);
+			s.count = count + 1;
+			auto p = open.find(s);
+			auto q = close.find(s);
+			if (p != open.end()) // might encounter a better state
+			{
+				if (p->count > s.count)
+					const_cast<state&>(*p).count = s.count;
+			}
+			else if (q == close.end())
+			{
+
+				open.insert(s);
+			}
+		}
+	}
+  close.insert(*this);
+}
+int main() {
+	int n = 4;
+	int input;
+	int min = INT_MAX;
+	int initvalue = 1;
+	open.insert(state(10, 0, 0, 0));
+	for (int i = 0; i < n; i++)
+	{
+		std::cin >> input;
+		if (i == 0)
+		{
+			initvalue = input;
+		}
+		else
+			initvalue = initvalue * 10 + input;
+	}
+	while (!open.empty())
+	{
+		auto p = open.begin();
+		state s = *p;
+		close.insert(s);
+		open.erase(p);
+		s.derive();
+	}
+	for (auto i = close.begin(); i != close.end(); ++i)
+	{
+		if (i->value == initvalue)
+		{
+			if (i->count<min)
+				min = i->count;
+		}
+	}
+	if (min == INT_MAX)
+		std::cout << -1 << std::endl;
+	std::cout << min << std::endl;
+	return 0;
+}
